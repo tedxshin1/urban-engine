@@ -24,12 +24,51 @@
         .toggle-icon.rotated {
             transform: rotate(180deg);
         }
+        /* 언어 메뉴 애니메이션 */
+        .language-menu {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .language-menu.open {
+            max-height: 200px;
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-100 to-indigo-200 p-4 min-h-screen">
     <div class="flex flex-col items-center justify-center py-12">
         <div class="bg-white bg-opacity-90 backdrop-filter backdrop-blur-lg rounded-3xl shadow-2xl w-full max-w-2xl p-8 space-y-8 transform transition-transform duration-300">
-            <h1 class="text-4xl font-extrabold text-gray-800 text-center tracking-wide">질병 및 증상 앱</h1>
+            <!-- Language Selection Menu -->
+            <div class="absolute top-4 right-4 z-10">
+                <button 
+                    id="menu-toggle"
+                    class="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors duration-200"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <div id="language-menu" class="language-menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5">
+                    <a 
+                        href="#" 
+                        data-lang="en"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 lang-option"
+                    >
+                        English
+                    </a>
+                    <a 
+                        href="#" 
+                        data-lang="ko"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 lang-option font-bold"
+                    >
+                        한국어
+                    </a>
+                </div>
+            </div>
+
+            <h1 id="app-title" class="text-4xl font-extrabold text-gray-800 text-center tracking-wide">질병 및 증상 앱</h1>
 
             <!-- 모드 선택 버튼 -->
             <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -64,7 +103,7 @@
                 </p>
                 <div id="loading-spinner" class="hidden flex-col items-center">
                     <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
-                    <p class="mt-4 text-gray-600 text-lg font-medium">생각 중...</p>
+                    <p id="loading-text" class="mt-4 text-gray-600 text-lg font-medium">생각 중...</p>
                 </div>
                 <p id="error-message" class="hidden text-red-500 font-bold text-lg"></p>
 
@@ -74,19 +113,109 @@
         </div>
     </div>
 
+    <!-- Add copyright notice at the bottom -->
+    <footer class="mt-12 text-center text-gray-500 text-sm">
+        <p>
+            &copy; 2025 SHIN MINECHEOL. All rights reserved.
+        </p>
+    </footer>
+
     <script>
         // DOM 요소들을 가져옵니다
+        const appTitle = document.getElementById('app-title');
         const aboutButton = document.getElementById('about-button');
         const symptomsButton = document.getElementById('symptoms-button');
         const inputField = document.getElementById('input-field');
         const goButton = document.getElementById('go-button');
         const placeholderText = document.getElementById('placeholder-text');
         const loadingSpinner = document.getElementById('loading-spinner');
+        const loadingText = document.getElementById('loading-text');
         const errorMessage = document.getElementById('error-message');
         const dynamicResultsWrapper = document.getElementById('dynamic-results-wrapper');
+        const menuToggle = document.getElementById('menu-toggle');
+        const languageMenu = document.getElementById('language-menu');
+        const langOptions = document.querySelectorAll('.lang-option');
+
+        // A content object to store all UI text in multiple languages for easy localization
+        const text = {
+            en: {
+                title: "Disease & Symptoms App",
+                aboutButton: "About the Disease",
+                symptomsButton: "Symptoms of Unknown Disease",
+                placeholderAbout: "Enter disease name...",
+                placeholderSymptoms: "Enter symptom...",
+                placeholderDefaultAbout: "Enter a disease name above to get details.",
+                placeholderDefaultSymptoms: "Enter a symptom above to get a possible diagnosis.",
+                goButton: "Go",
+                thinking: "Thinking...",
+                errorFetch: "Failed to fetch data. Please try again.",
+                errorEmpty: "Please enter some text.",
+                symptomsIntro: (symptoms) => `The symptom '${symptoms}' is a very common symptom that can appear in a variety of diseases. For an accurate diagnosis, the following additional information is needed:`,
+                generalResponse: (symptoms) => `The symptom "${symptoms}" is too general. Please provide more specific symptoms to get a possible diagnosis.`
+            },
+            ko: {
+                title: "질병 및 증상 앱",
+                aboutButton: "질병 정보",
+                symptomsButton: "알 수 없는 증상",
+                placeholderAbout: "질병 이름을 입력하세요...",
+                placeholderSymptoms: "증상을 입력하세요...",
+                placeholderDefaultAbout: "위의 질병 이름을 입력하여 세부 정보를 얻으세요.",
+                placeholderDefaultSymptoms: "위의 증상을 입력하여 가능한 진단을 받으세요.",
+                goButton: "찾기",
+                thinking: "생각 중...",
+                errorFetch: "데이터를 가져오는 데 실패했습니다. 다시 시도해 주세요.",
+                errorEmpty: "텍스트를 입력해 주세요.",
+                symptomsIntro: (symptoms) => `**'${symptoms}'** 증상은 매우 흔하게 나타나는 증상으로, 다양한 질병의 징후일 수 있습니다. 정확한 진단을 위해서는 전문의의 진료와 함께 다양한 검사가 필수적입니다. 따라서 이 정보는 참고용으로만 활용하시고, 의료 전문가와 상담하시기를 강력히 권장합니다. **이 증상과 관련하여 가장 가능성이 높은 질병 세 가지를 아래에 제시해 드립니다.**`,
+                generalResponse: (symptoms) => `"${symptoms}" 증상은 너무 일반적입니다. 가능한 진단을 위해 더 구체적인 증상을 제공해 주세요.`
+            },
+        };
 
         // 현재 뷰 상태를 추적합니다: 'about' 또는 'symptoms'
         let currentView = 'about';
+        // 현재 언어 상태를 추적합니다: 'ko' 또는 'en'
+        let currentLang = 'ko';
+
+        // UI 텍스트를 업데이트하는 함수
+        function updateUI() {
+            appTitle.textContent = text[currentLang].title;
+            aboutButton.textContent = text[currentLang].aboutButton;
+            symptomsButton.textContent = text[currentLang].symptomsButton;
+            goButton.textContent = text[currentLang].goButton;
+            loadingText.textContent = text[currentLang].thinking;
+            
+            if (currentView === 'about') {
+                inputField.placeholder = text[currentLang].placeholderAbout;
+                placeholderText.textContent = text[currentLang].placeholderDefaultAbout;
+            } else {
+                inputField.placeholder = text[currentLang].placeholderSymptoms;
+                placeholderText.textContent = text[currentLang].placeholderDefaultSymptoms;
+            }
+
+            // 언어 옵션에 bold 스타일 추가/제거
+            langOptions.forEach(option => {
+                if (option.dataset.lang === currentLang) {
+                    option.classList.add('font-bold');
+                } else {
+                    option.classList.remove('font-bold');
+                }
+            });
+
+            // 오류 메시지가 표시되어 있다면 언어 업데이트
+            if (!errorMessage.classList.contains('hidden')) {
+                const currentError = errorMessage.textContent;
+                if (currentError === text.en.errorFetch || currentError === text.en.errorEmpty) {
+                     errorMessage.textContent = text[currentLang].errorFetch;
+                } else if (currentError === text.ko.errorFetch || currentError === text.ko.errorEmpty) {
+                    errorMessage.textContent = text[currentLang].errorFetch;
+                }
+            }
+        }
+        
+        // 언어 변경 함수
+        function switchLang(lang) {
+            currentLang = lang;
+            updateUI();
+        }
 
         // 하나의 요소를 보여주고 다른 요소는 숨깁니다
         function showElement(element) {
@@ -105,32 +234,25 @@
                 aboutButton.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-blue-500', 'hover:text-white');
                 symptomsButton.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
                 symptomsButton.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-blue-500', 'hover:text-white');
-                inputField.placeholder = '질병 이름을 입력하세요...';
-                placeholderText.textContent = '위의 질병 이름을 입력하여 세부 정보를 얻으세요.';
             } else {
                 symptomsButton.classList.add('bg-blue-600', 'text-white', 'shadow-lg');
                 symptomsButton.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-blue-500', 'hover:text-white');
                 aboutButton.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
                 aboutButton.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-blue-500', 'hover:text-white');
-                inputField.placeholder = '증상을 입력하세요...';
-                placeholderText.textContent = '위의 증상을 입력하여 가능한 진단을 받으세요.';
             }
             showElement(placeholderText);
             inputField.value = '';
             // 뷰 변경 시 동적 결과 영역을 비웁니다
             dynamicResultsWrapper.innerHTML = '';
+            updateUI(); // UI 텍스트도 업데이트
         }
-
-        // 모드 버튼에 이벤트 리스너를 추가합니다
-        aboutButton.addEventListener('click', () => updateView('about'));
-        symptomsButton.addEventListener('click', () => updateView('symptoms'));
-
+        
         // Gemini API를 호출하는 함수
-        async function callGeminiAPI(prompt) {
+        async function callGeminiAPI(prompt, headingText) {
             showElement(loadingSpinner);
             goButton.disabled = true;
 
-            const apiKey = "AIzaSyBHq0-FbSpVcFuOjIpPoXATuM51z006S3Y";
+            const apiKey = "";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
             const chatHistory = [{
@@ -154,95 +276,117 @@
                 }
 
                 const result = await response.json();
+                const responseText = result.candidates[0].content.parts[0].text;
+                
+                dynamicResultsWrapper.innerHTML = '';
+                dynamicResultsWrapper.classList.remove('hidden');
 
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    
-                    dynamicResultsWrapper.innerHTML = ''; // 이전 결과 제거
-                    dynamicResultsWrapper.classList.remove('hidden');
+                // 응답에서 마크다운 제거
+                const cleanedText = responseText.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '');
 
-                    // 응답에서 마크다운 제거
-                    const cleanedText = text.replace(/\*\*/g, '').replace(/\*/g, '');
+                if (currentView === 'about') {
+                     // '질병 정보' 모드에서는 하나의 블록으로 처리
+                    // 각 항목을 굵은 글씨로 변경하고, 공백을 추가
+                    const formattedContent = cleanedText
+                        .replace(/질병에 대한 설명:/, '<br><br><b>질병에 대한 설명:</b>')
+                        .replace(/주요 증상:/, '<br><br><b>주요 증상:</b>')
+                        .replace(/치료 방법:/, '<br><br><b>치료 방법:</b>')
+                        .replace(/수술 과정:/, '<br><br><b>수술 과정:</b>')
+                        .replace(/수술 후 회복 경과:/, '<br><br><b>수술 후 회복 경과:</b>')
+                        .replace(/Description:/, '<br><br><b>Description:</b>')
+                        .replace(/Symptoms:/, '<br><br><b>Symptoms:</b>')
+                        .replace(/Treatment Methods:/, '<br><br><b>Treatment Methods:</b>')
+                        .replace(/Surgical Procedure:/, '<br><br><b>Surgical Procedure:</b>')
+                        .replace(/Post-operative Recovery:/, '<br><br><b>Post-operative Recovery:</b>')
+                        .trim();
 
-                    let results;
-                    if (currentView === 'about') {
-                        // '질병 정보' 모드에서는 전체 응답을 하나의 블록으로 처리
-                        results = [cleanedText];
-                    } else {
-                        // '알 수 없는 증상' 모드에서는 각 질병별로 블록을 분리
-                        results = cleanedText.split(/\n\n(?=1\.|2\.|3\.)/).filter(item => item.trim() !== '');
+                    const resultElement = document.createElement('div');
+                    resultElement.className = 'w-full flex flex-col mt-4 p-4 border border-gray-300 rounded-lg shadow-sm';
+                    resultElement.innerHTML = `
+                        <button class="toggle-button flex items-center justify-between w-full px-2 py-2 text-xl font-bold text-left text-gray-700 bg-gray-100 rounded-lg transition-all duration-300 hover:bg-gray-200 focus:outline-none">
+                            <span>${headingText}</span>
+                            <svg class="toggle-icon w-8 h-8 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                        <div class="collapsible-content mt-2">
+                            <div class="prose max-w-none text-left w-full p-4 border-t border-gray-200">
+                                <div class="whitespace-pre-line max-h-96 overflow-y-auto">${formattedContent}</div>
+                            </div>
+                        </div>
+                    `;
+                    dynamicResultsWrapper.appendChild(resultElement);
+                } else {
+                    // '알 수 없는 증상' 모드에서는 여러 개의 결과 블록을 처리
+                    // 첫 번째 줄은 일반적인 설명, 그 뒤는 1., 2., 3.으로 시작하는 결과
+                    const parts = cleanedText.split(/\n\n(?=\d+\.)/);
+                    const introText = parts[0].trim();
+                    const diseaseResults = parts.slice(1);
+
+                    if (introText) {
+                         const introElement = document.createElement('div');
+                         // Add font-bold class here as requested by the user
+                         introElement.className = 'w-full text-center text-gray-600 font-bold mb-4 p-4 rounded-xl border border-gray-200 bg-white';
+                         // 마크다운 ** **를 <b> </b>로 변환하여 볼드체로 표시
+                         const formattedIntroText = introText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                         introElement.innerHTML = `<div class="prose max-w-none"><div class="whitespace-pre-line">${formattedIntroText}</div></div>`;
+                         dynamicResultsWrapper.appendChild(introElement);
                     }
-                    
-                    if (results.length > 0) {
-                        results.forEach((item, index) => {
-                            let heading;
-                            let contentHtml;
-                            if(currentView === 'about') {
-                                heading = inputField.value.trim();
-                                contentHtml = item;
-                            } else {
-                                const lines = item.split('\n');
-                                heading = lines[0].trim();
-                                contentHtml = lines.slice(1).join('\n');
-                            }
-                            
-                            // 각 항목을 굵은 글씨로 변경하고, 공백을 추가
-                            const formattedContent = contentHtml
-                                .replace(/설명:/, '<br><br><b>설명:</b>')
-                                .replace(/증상:/, '<br><br><b>증상:</b>')
-                                .replace(/치료방법:/, '<br><br><b>치료방법:</b>')
-                                .replace(/수술 방법:/, '<br><br><b>수술 방법:</b>')
-                                .replace(/수술 후 회복 과정:/, '<br><br><b>수술 후 회복 과정:</b>')
-                                .trim();
 
+                    diseaseResults.forEach(item => {
+                        const lines = item.split('\n');
+                        // 첫 번째 줄에서 '1. 질병명 (영어명)' 추출
+                        const heading = lines[0].replace(/^\d+\.\s*/, '').trim();
+                        // 나머지 줄이 상세 내용
+                        const contentHtml = lines.slice(1).join('\n').trim();
 
-                            const resultElement = document.createElement('div');
-                            resultElement.className = 'w-full flex flex-col mt-4 p-4 border border-gray-300 rounded-lg shadow-sm';
-                            resultElement.innerHTML = `
-                                <button class="toggle-button flex items-center justify-between w-full px-2 py-2 text-xl font-bold text-left text-gray-700 bg-gray-100 rounded-lg transition-all duration-300 hover:bg-gray-200 focus:outline-none">
-                                    <span>${heading}</span>
-                                    <svg class="toggle-icon w-8 h-8 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                                    </svg>
-                                </button>
-                                <div class="collapsible-content mt-2">
-                                    <div class="prose max-w-none text-left w-full p-4 border-t border-gray-200">
-                                        <div class="whitespace-pre-line max-h-96 overflow-y-auto">${formattedContent}</div>
-                                    </div>
-                                </div>
-                            `;
-                            dynamicResultsWrapper.appendChild(resultElement);
-                        });
+                        // 각 항목을 굵은 글씨로 변경하고, 공백을 추가
+                        const formattedContent = contentHtml
+                            .replace(/질병에 대한 설명:/, '<br><br><b>질병에 대한 설명:</b>')
+                            .replace(/주요 증상:/, '<br><br><b>주요 증상:</b>')
+                            .replace(/치료 방법:/, '<br><br><b>치료 방법:</b>')
+                            .replace(/수술 과정:/, '<br><br><b>수술 과정:</b>')
+                            .replace(/수술 후 회복 경과:/, '<br><br><b>수술 후 회복 경과:</b>')
+                            .replace(/Description:/, '<br><br><b>Description:</b>')
+                            .replace(/Symptoms:/, '<br><br><b>Symptoms:</b>')
+                            .replace(/Treatment Methods:/, '<br><br><b>Treatment Methods:</b>')
+                            .replace(/Surgical Procedure:/, '<br><br><b>Surgical Procedure:</b>')
+                            .replace(/Post-operative Recovery:/, '<br><br><b>Post-operative Recovery:</b>')
+                            .trim();
 
-                        // 각 버튼에 이벤트 리스너 추가
-                        document.querySelectorAll('.toggle-button').forEach(button => {
-                            button.addEventListener('click', (e) => {
-                                const content = e.currentTarget.nextElementSibling;
-                                const icon = e.currentTarget.querySelector('.toggle-icon');
-                                content.classList.toggle('expanded');
-                                icon.classList.toggle('rotated');
-                            });
-                        });
-
-                    } else {
-                        // 모호한 증상 또는 일반적인 응답 처리
-                         dynamicResultsWrapper.innerHTML = `
-                            <div class="w-full flex flex-col p-4">
-                                <div class="prose max-w-none text-left w-full">
-                                    <div class="whitespace-pre-line max-h-96 overflow-y-auto">${cleanedText}</div>
+                        const resultElement = document.createElement('div');
+                        resultElement.className = 'w-full flex flex-col mt-4 p-4 border border-gray-300 rounded-lg shadow-sm';
+                        resultElement.innerHTML = `
+                            <button class="toggle-button flex items-center justify-between w-full px-2 py-2 text-xl font-bold text-left text-gray-700 bg-gray-100 rounded-lg transition-all duration-300 hover:bg-gray-200 focus:outline-none">
+                                <span>${heading}</span>
+                                <svg class="toggle-icon w-8 h-8 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+                            <div class="collapsible-content mt-2">
+                                <div class="prose max-w-none text-left w-full p-4 border-t border-gray-200">
+                                    <div class="whitespace-pre-line max-h-96 overflow-y-auto">${formattedContent}</div>
                                 </div>
                             </div>
                         `;
-                    }
-                    showElement(dynamicResultsWrapper);
-                } else {
-                    throw new Error("Invalid response from API.");
+                        dynamicResultsWrapper.appendChild(resultElement);
+                    });
                 }
+
+                // 각 버튼에 이벤트 리스너 추가
+                document.querySelectorAll('.toggle-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const content = e.currentTarget.nextElementSibling;
+                        const icon = e.currentTarget.querySelector('.toggle-icon');
+                        content.classList.toggle('expanded');
+                        icon.classList.toggle('rotated');
+                    });
+                });
+                
+                showElement(dynamicResultsWrapper);
             } catch (e) {
                 console.error("API call error:", e);
-                errorMessage.textContent = "데이터를 가져오는 데 실패했습니다. 다시 시도해 주세요.";
+                errorMessage.textContent = text[currentLang].errorFetch;
                 showElement(errorMessage);
             } finally {
                 goButton.disabled = false;
@@ -253,71 +397,144 @@
         function handleGo() {
             const inputValue = inputField.value.trim();
             if (!inputValue) {
-                errorMessage.textContent = "텍스트를 입력해 주세요.";
+                errorMessage.textContent = text[currentLang].errorEmpty;
                 showElement(errorMessage);
                 return;
             }
 
             let prompt = '';
+            let headingText = '';
+
             if (currentView === 'about') {
-                // '질병 정보' 모드 프롬프트
-                prompt = `Provide a detailed, organized summary of the disease "${inputValue}" in Korean. Format the response as a single block of text with clear bold headings. Do not use any markdown formatting like * or #. Each heading should be on a new line and the content should follow. Use the following structure, with a blank line between each section:
-설명:
+                headingText = inputValue;
+                if (currentLang === 'ko') {
+                    prompt = `Provide a detailed, organized summary of the disease "${inputValue}" in Korean. Format the response as a single block of text with clear bold headings. Do not use any markdown formatting like * or #. Each heading should be on a new line and the content should follow. Use the following structure, with a blank line between each section:
+질병에 대한 설명:
 [Description]
 
-증상:
+주요 증상:
 [Symptoms]
 
-치료방법:
+치료 방법:
 [Treatment Methods]
 
 If surgery is a treatment option, provide an extensive, university-level, medically technical explanation of the surgical procedure and a detailed explanation of the post-operative recovery process.
-수술 방법:
+수술 과정:
 [Extensive, textbook-level, medically technical explanation of the surgical procedure]
 
-수술 후 회복 과정:
+수술 후 회복 경과:
 [Detailed explanation of the post-operative recovery process]`;
-            } else {
-                // '알 수 없는 증상' 모드 프롬프트
-                prompt = `I am experiencing the following symptom: "${inputValue}". Based on this, please provide a list of the 3 most plausible diseases in Korean. For each disease, provide a brief description of how it relates to the symptom and one or two follow-up questions that could help narrow down the diagnosis. If the symptom is too general to provide a clear diagnosis, you must explicitly state that more information is needed and ask for more specific symptoms. Do not use any markdown formatting like * or #. For each of the three diseases, format the response as follows, with a blank line between each section:
+                } else { // English prompt
+                    prompt = `Provide a detailed, organized summary of the disease "${inputValue}" in English. Format the response as a single block of text with clear bold headings. Do not use any markdown formatting like * or #. Each heading should be on a new line and the content should follow. Use the following structure, with a blank line between each section:
+Description:
+[Description]
+
+Symptoms:
+[Symptoms]
+
+Treatment Methods:
+[Treatment Methods]
+
+If surgery is a treatment option, provide an extensive, university-level, medically technical explanation of the surgical procedure and a detailed explanation of the post-operative recovery process.
+Surgical Procedure:
+[Extensive, textbook-level, medically technical explanation of the surgical procedure]
+
+Post-operative Recovery:
+[Detailed explanation of the post-operative recovery process]`;
+                }
+                callGeminiAPI(prompt, headingText);
+            } else { // currentView === 'symptoms'
+                headingText = inputValue;
+                if (currentLang === 'ko') {
+                    prompt = `I am experiencing the following symptom: "${inputValue}". Please provide a list of the 3 most plausible diseases in Korean. For each disease, provide a detailed, organized summary using the following structure. Do not use any markdown formatting like * or #. The entire response should be a single block of text where each disease is clearly separated with its number (1., 2., 3.). Each disease summary should have a title on a new line, followed by the detailed sections.
+The response should be formatted as follows:
+'${inputValue}' 증상은 매우 흔하게 나타나는 증상으로, 다양한 질병의 징후일 수 있습니다. 정확한 진단을 위해서는 전문의의 진료와 함께 다양한 검사가 필수적입니다. 따라서 이 정보는 참고용으로만 활용하시고, 의료 전문가와 상담하시기를 강력히 권장합니다. 이 증상과 관련하여 가장 가능성이 높은 질병 세 가지를 아래에 제시해 드립니다.
+
 1. [Disease Name]
-설명:
-[Description]
+질병에 대한 설명:
+[Extensive and detailed description of the disease]
 
-증상:
-[Symptoms]
+주요 증상:
+[Detailed explanation of the main symptoms, including how they relate to the user's input]
 
-치료방법:
-[Treatment Methods]
+치료 방법:
+[Comprehensive overview of all treatment methods]
 
 If surgery is a treatment option, provide an extensive, university-level, medically technical explanation of the surgical procedure and a detailed explanation of the post-operative recovery process.
-수술 방법:
+수술 과정:
 [Extensive, textbook-level, medically technical explanation of the surgical procedure]
 
-수술 후 회복 과정:
-[Detailed explanation of the post-operative recovery process]`;
+수술 후 회복 경과:
+[Detailed explanation of the post-operative recovery process]
+
+2. [Disease Name]
+... (same structure)
+
+3. [Disease Name]
+... (same structure)
+
+If the symptom is too general to provide a clear diagnosis, you must explicitly state that more information is needed and ask for more specific symptoms. In this case, do not provide the list of diseases.`;
+                } else { // English prompt
+                    prompt = `I am experiencing the following symptom: "${inputValue}". Please provide a list of the 3 most plausible diseases in English. For each disease, provide a detailed, organized summary using the following structure. Do not use any markdown formatting like * or #. The entire response should be a single block of text where each disease is clearly separated with its number (1., 2., 3.). Each disease summary should have a title on a new line, followed by the detailed sections.
+The response should be formatted as follows:
+The symptom '${inputValue}' is a very common symptom that can appear in a variety of diseases. For an accurate diagnosis, the following additional information is needed:
+
+1. [Disease Name]
+Description:
+[Extensive and detailed description of the disease]
+
+Symptoms:
+[Detailed explanation of the main symptoms, including how they relate to the user's input]
+
+Treatment Methods:
+[Comprehensive overview of all treatment methods]
+
+If surgery is a treatment option, provide an extensive, university-level, medically technical explanation of the surgical procedure and a detailed explanation of the post-operative recovery process.
+Surgical Procedure:
+[Extensive, textbook-level, medically technical explanation of the surgical procedure]
+
+Post-operative Recovery:
+[Detailed explanation of the post-operative recovery process]
+
+2. [Disease Name]
+... (same structure)
+
+3. [Disease Name]
+... (same structure)
+
+If the symptom is too general to provide a clear diagnosis, you must explicitly state that more information is needed and ask for more specific symptoms. In this case, do not provide the list of diseases.`;
+                }
+                callGeminiAPI(prompt, headingText);
             }
-            callGeminiAPI(prompt);
         }
 
+        // 모드 버튼에 이벤트 리스너를 추가합니다
+        aboutButton.addEventListener('click', () => updateView('about'));
+        symptomsButton.addEventListener('click', () => updateView('symptoms'));
         goButton.addEventListener('click', handleGo);
         inputField.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 handleGo();
             }
         });
+
+        // 언어 메뉴 토글
+        menuToggle.addEventListener('click', () => {
+            languageMenu.classList.toggle('open');
+        });
         
+        // 언어 옵션 클릭 이벤트
+        langOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchLang(e.target.dataset.lang);
+                languageMenu.classList.remove('open');
+            });
+        });
+
         // 초기 뷰 설정
         updateView('about');
+        updateUI();
     </script>
-        <!-- Add copyright notice at the bottom -->
-    <footer class="mt-12 text-center text-gray-500 text-sm">
-        <p>
-            &copy; 2025 SHIN MINECHEOL. All rights reserved.
-        </p>
-    </footer>
 </body>
 </html>
-
-
-
